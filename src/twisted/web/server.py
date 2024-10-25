@@ -41,6 +41,7 @@ from twisted.web.http import (
     datetimeToString,
     unquote,
 )
+from twisted.web.resource import getChildForRequest
 
 NOT_DONE_YET = 1
 
@@ -876,7 +877,7 @@ class Site(HTTPFactory):
         # Sitepath is used to determine cookie names between distributed
         # servers and disconnected sites.
         request.sitepath = copy.copy(request.prepath)
-        return resource.getChildForRequest(self.resource, request)
+        return getChildForRequest(self.resource, request)
 
     # IProtocolNegotiationFactory
     def acceptableProtocols(self):
