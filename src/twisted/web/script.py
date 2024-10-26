@@ -10,6 +10,7 @@ code to handle requests.
 import os
 import traceback
 from io import StringIO
+from typing import Optional
 
 from twisted import copyright
 from twisted.python.compat import execfile, networkString
@@ -94,7 +95,18 @@ def ResourceTemplate(path, registry):
 
 
 class ResourceScriptWrapper(Resource):
-    def __init__(self, path, registry=None):
+    """
+    L{ResourceScriptWrapper} is a resource that delegates all requests
+    to a single script.
+
+    @ivar path: Filesystem path of the script.
+
+    @ivar registry: A L{static.Registry} provided to the script.
+
+    @see: L{ResourceScript}
+    """
+
+    def __init__(self, path: bytes, registry: Optional[static.Registry] = None) -> None:
         Resource.__init__(self)
         self.path = path
         self.registry = registry or static.Registry()
@@ -115,14 +127,16 @@ class ResourceScriptDirectory(Resource):
     be served using L{ResourceScript}.  Directory children will be served using
     another L{ResourceScriptDirectory}.
 
-    @ivar path: A C{str} giving the filesystem path in which children will be
+    @ivar path: A C{bytes} giving the filesystem path in which children will be
         looked up.
 
     @ivar registry: A L{static.Registry} instance which will be used to decide
         how to interpret scripts found as children of this resource.
     """
 
-    def __init__(self, pathname, registry=None):
+    def __init__(
+        self, pathname: bytes, registry: Optional[static.Registry] = None
+    ) -> None:
         Resource.__init__(self)
         self.path = pathname
         self.registry = registry or static.Registry()
@@ -150,7 +164,7 @@ class PythonScript(Resource):
 
     isLeaf = True
 
-    def __init__(self, filename, registry):
+    def __init__(self, filename: bytes, registry: Optional[static.Registry]) -> None:
         """
         Initialize me with a script name.
         """

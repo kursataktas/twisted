@@ -9,11 +9,56 @@ import os
 
 from twisted.internet import defer
 from twisted.python.filepath import FilePath
-from twisted.trial.unittest import TestCase
+from twisted.trial.unittest import SynchronousTestCase, TestCase
 from twisted.web.http import NOT_FOUND
-from twisted.web.script import PythonScript, ResourceScriptDirectory
+from twisted.web.resource import getChildForRequest
+from twisted.web.script import (
+    PythonScript,
+    ResourceScriptDirectory,
+    ResourceScriptWrapper,
+)
 from twisted.web.test._util import _render
 from twisted.web.test.requesthelper import DummyRequest
+
+
+class ResourceScriptWrapperTests(SynchronousTestCase):
+    """
+    Tests for L{ResourceScriptWrapper}.
+    """
+
+    def test_render(self) -> None:
+        """
+        L{ResourceScriptWrapper} delegates C{render()} to a script
+        at a specific path.
+        """
+        path = self.mktemp()
+        with open(path, "w") as f:
+            f.write("from twisted.web.pages import errorPage\n")
+            f.write('resource = errorPage(418, "I\'m a teapot", "")\n')
+
+        wrapper = ResourceScriptWrapper(path)
+        request = DummyRequest([b""])
+        self.successResultOf(_render(wrapper, request))
+        self.assertEqual(request.responseCode, 418)
+
+    def test_getChildWithDefault(self) -> None:
+        """
+        L{ResourceScriptWrapper} delegates C{getChildWithDefault()}
+        to a script at a specific path.
+        """
+        path = self.mktemp()
+        with open(path, "w") as f:
+            f.write("from twisted.web.pages import errorPage, notFound\n")
+            f.write("resource = notFound()\n")
+            f.write(
+                'resource.putChild(b"child", errorPage(418, "I\'m a teapot", ""))\n'
+            )
+
+        wrapper = ResourceScriptWrapper(path)
+        request = DummyRequest([b"child"])
+        resource = getChildForRequest(wrapper, request)
+        self.successResultOf(_render(resource, request))
+        self.assertEqual(request.responseCode, 418)
 
 
 class ResourceScriptDirectoryTests(TestCase):
@@ -26,7 +71,7 @@ class ResourceScriptDirectoryTests(TestCase):
         L{ResourceScriptDirectory.render} sets the HTTP response code to I{NOT
         FOUND}.
         """
-        resource = ResourceScriptDirectory(self.mktemp())
+        resource = ResourceScriptDirectory(os.fsencode(self.mktemp()))
         request = DummyRequest([b""])
         d = _render(resource, request)
 
@@ -44,9 +89,9 @@ class ResourceScriptDirectoryTests(TestCase):
         """
         path = self.mktemp()
         os.makedirs(path)
-        resource = ResourceScriptDirectory(path)
+        resource = ResourceScriptDirectory(os.fsencode(path))
         request = DummyRequest([b"foo"])
-        child = resource.getChild("foo", request)
+        child = resource.getChild(b"foo", request)
         d = _render(child, request)
 
         def cbRendered(ignored: object) -> None:
