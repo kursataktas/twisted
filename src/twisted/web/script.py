@@ -11,15 +11,11 @@ import os
 import traceback
 from io import StringIO
 
-from incremental import Version
-
 from twisted import copyright
 from twisted.python.compat import execfile, networkString
-from twisted.python.deprecate import deprecatedModuleAttribute
 from twisted.python.filepath import _coerceToFilesystemEncoding
-from twisted.web import pages, resource, server, static, util
-from twisted.web.iweb import IRequest
-from twisted.web.resource import Resource
+from twisted.web import pages, server, static, util
+from twisted.web.resource import Resource, _UnsafeErrorPage
 
 rpyNoResource = """<p>You forgot to assign to the variable "resource" in your script. For example:</p>
 <pre>
@@ -30,53 +26,15 @@ import mygreatresource
 resource = mygreatresource.MyGreatResource()
 </pre>
 """
-deprecatedModuleAttribute(
-    Version("Twisted", "NEXT", 0, 0),
-    "No longer in use.",
-    "twisted.web.script",
-    "rpyNoResource",
-)
-
-
-class _RpyNoResource(Resource):
-    def render(self, request: IRequest) -> bytes:
-        """
-        Report that the developer must assign a L{resource} global
-        in the L{.rpy} script.
-        """
-        return b"""\
-<!DOCTYPE html>
-<html>
-<head><title>500 - Whoops! Internal Error</title></head>
-<body>
-<h1>500 - Whoops! Internal Error</h1>
-<p>You forgot to assign to the variable "resource" in your script. For example:</p>
-<pre>
-# MyCoolWebApp.rpy
-
-import mygreatresource
-
-resource = mygreatresource.MyGreatResource()
-</pre>
-</body>
-</html>
-"""
-
-    def getChild(self, path: bytes, request: IRequest) -> Resource:
-        """
-        Handle all requests for which L{_RpyNoResource} lacks a child
-        by returning this error page.
-        """
-        return self
-
-
-noRsrc = _RpyNoResource()
 
 
 class AlreadyCached(Exception):
     """
     This exception is raised when a path has already been cached.
     """
+
+
+noRsrc = _UnsafeErrorPage(500, "Whoops! Internal Error", rpyNoResource)
 
 
 class CacheScanner:
@@ -97,9 +55,9 @@ class CacheScanner:
 
 def ResourceScript(path, registry):
     """
-    I am a normal py file which must define a 'resource' global, which should
-    be an instance of (a subclass of) web.resource.Resource; it will be
-    rendered.
+    I am a normal C{.py} file which must define a C{resource} global, which
+    should be an instance of (a subclass of) L{twisted.web.resource.Resource};
+    it will be rendered.
     """
     cs = CacheScanner(path, registry)
     glob = {
@@ -124,7 +82,7 @@ def ResourceTemplate(path, registry):
 
     glob = {
         "__file__": _coerceToFilesystemEncoding("", path),
-        "resource": rpyNoResource,
+        "resource": noRsrc,
         "registry": registry,
     }
 
@@ -135,9 +93,9 @@ def ResourceTemplate(path, registry):
     return glob["resource"]
 
 
-class ResourceScriptWrapper(resource.Resource):
+class ResourceScriptWrapper(Resource):
     def __init__(self, path, registry=None):
-        resource.Resource.__init__(self)
+        Resource.__init__(self)
         self.path = path
         self.registry = registry or static.Registry()
 
@@ -150,7 +108,7 @@ class ResourceScriptWrapper(resource.Resource):
         return res.getChildWithDefault(path, request)
 
 
-class ResourceScriptDirectory(resource.Resource):
+class ResourceScriptDirectory(Resource):
     """
     L{ResourceScriptDirectory} is a resource which serves scripts from a
     filesystem directory.  File children of a L{ResourceScriptDirectory} will
@@ -165,7 +123,7 @@ class ResourceScriptDirectory(resource.Resource):
     """
 
     def __init__(self, pathname, registry=None):
-        resource.Resource.__init__(self)
+        Resource.__init__(self)
         self.path = pathname
         self.registry = registry or static.Registry()
 
@@ -182,7 +140,7 @@ class ResourceScriptDirectory(resource.Resource):
         return pages.notFound().render(request)
 
 
-class PythonScript(resource.Resource):
+class PythonScript(Resource):
     """
     I am an extremely simple dynamic resource; an embedded Python script.
 
