@@ -31,7 +31,7 @@ from twisted.logger import Logger
 from twisted.python import components, failure, reflect
 from twisted.python.compat import nativeString, networkString
 from twisted.spread.pb import Copyable, ViewPoint
-from twisted.web import http, iweb, resource, util
+from twisted.web import http, iweb, util
 from twisted.web.error import UnsupportedMethod
 from twisted.web.http import (
     NO_CONTENT,
@@ -41,7 +41,11 @@ from twisted.web.http import (
     datetimeToString,
     unquote,
 )
-from twisted.web.resource import getChildForRequest
+from twisted.web.resource import (
+    _IEncodingResource,
+    _UnsafeErrorPage,
+    getChildForRequest,
+)
 
 NOT_DONE_YET = 1
 
@@ -206,7 +210,7 @@ class Request(Copyable, http.Request, components.Componentized):
 
         try:
             resrc = self.site.getResourceFor(self)
-            if resource._IEncodingResource.providedBy(resrc):
+            if _IEncodingResource.providedBy(resrc):
                 encoder = resrc.getEncoder(self)
                 if encoder is not None:
                     self._encoder = encoder
@@ -321,12 +325,10 @@ class Request(Copyable, http.Request, components.Componentized):
                         "allowed": ", ".join([nativeString(x) for x in allowedMethods]),
                     }
                 )
-                epage = resource._UnsafeErrorPage(
-                    http.NOT_ALLOWED, "Method Not Allowed", s
-                )
+                epage = _UnsafeErrorPage(http.NOT_ALLOWED, "Method Not Allowed", s)
                 body = epage.render(self)
             else:
-                epage = resource._UnsafeErrorPage(
+                epage = _UnsafeErrorPage(
                     http.NOT_IMPLEMENTED,
                     "Huh?",
                     "I don't know how to treat a %s request."
@@ -338,7 +340,7 @@ class Request(Copyable, http.Request, components.Componentized):
         if body is NOT_DONE_YET:
             return
         if not isinstance(body, bytes):
-            body = resource._UnsafeErrorPage(
+            body = _UnsafeErrorPage(
                 http.INTERNAL_SERVER_ERROR,
                 "Request did not return bytes",
                 "Request: "
