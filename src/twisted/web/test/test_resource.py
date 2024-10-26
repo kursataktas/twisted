@@ -8,6 +8,7 @@ Tests for L{twisted.web.resource}.
 from incremental import Version
 
 from twisted.trial.unittest import TestCase
+from twisted.web import resource
 from twisted.web.error import UnsupportedMethod
 from twisted.web.http_headers import Headers
 from twisted.web.iweb import IRequest
@@ -25,47 +26,34 @@ class ErrorPageTests(TestCase):
         """
         The public C{twisted.web.resource.ErrorPage} alias for the
         corresponding C{_Unsafe} class produces a deprecation warning when
-        called.
+        referenced.
         """
         ErrorPage = self.getDeprecatedModuleAttribute(
-            "twisted.web.resource",
-            "ErrorPage",
-            Version("Twisted", "NEXT", 0, 0),
+            "twisted.web.resource", "ErrorPage", Version("Twisted", 22, 10, 0)
         )
-        _ = ErrorPage(123, "ono", "ono!")
-        [warning] = self.flushWarnings()
-        self.assertEqual(warning["category"], DeprecationWarning)
-        self.assertIn("twisted.web.pages.errorPage", warning["message"])
+        self.assertIs(ErrorPage, resource._UnsafeErrorPage)
 
     def test_deprecatedNoResource(self) -> None:
         """
         The public C{twisted.web.resource.NoResource} alias for the
         corresponding C{_Unsafe} class produces a deprecation warning when
-        called.
+        referenced.
         """
         NoResource = self.getDeprecatedModuleAttribute(
-            "twisted.web.resource", "NoResource", Version("Twisted", "NEXT", 0, 0)
+            "twisted.web.resource", "NoResource", Version("Twisted", 22, 10, 0)
         )
-        _ = NoResource()
-        [warning] = self.flushWarnings()
-        self.assertEqual(warning["category"], DeprecationWarning)
-        self.assertIn("twisted.web.pages.notFound", warning["message"])
+        self.assertIs(NoResource, resource._UnsafeNoResource)
 
     def test_deprecatedForbiddenResource(self) -> None:
         """
         The public C{twisted.web.resource.ForbiddenResource} alias for the
-        corresponding C{_Unsafe} class produce a deprecation warning when
-        called.
+        corresponding C{_Unsafe} class produces a deprecation warning when
+        referenced.
         """
         ForbiddenResource = self.getDeprecatedModuleAttribute(
-            "twisted.web.resource",
-            "ForbiddenResource",
-            Version("Twisted", "NEXT", 0, 0),
+            "twisted.web.resource", "ForbiddenResource", Version("Twisted", 22, 10, 0)
         )
-        _ = ForbiddenResource()
-        [warning] = self.flushWarnings()
-        self.assertEqual(warning["category"], DeprecationWarning)
-        self.assertIn("twisted.web.pages.forbidden", warning["message"])
+        self.assertIs(ForbiddenResource, resource._UnsafeForbiddenResource)
 
     def test_getChild(self) -> None:
         """
@@ -73,10 +61,9 @@ class ErrorPageTests(TestCase):
         called on.
         """
         ErrorPage = self.getDeprecatedModuleAttribute(
-            "twisted.web.resource", "ErrorPage", Version("Twisted", "NEXT", 0, 0)
+            "twisted.web.resource", "ErrorPage", Version("Twisted", 22, 10, 0)
         )
         page = ErrorPage(321, "foo", "bar")
-        self.flushWarnings()  # Covered in test_deprecatedErrorPage.
         self.assertIdentical(page.getChild(b"name", object()), page)
 
     def _pageRenderingTest(
@@ -109,13 +96,12 @@ class ErrorPageTests(TestCase):
         passed in.
         """
         ErrorPage = self.getDeprecatedModuleAttribute(
-            "twisted.web.resource", "ErrorPage", Version("Twisted", "NEXT", 0, 0)
+            "twisted.web.resource", "ErrorPage", Version("Twisted", 22, 10, 0)
         )
         code = 321
         brief = "brief description text"
         detail = "much longer text might go here"
         page = ErrorPage(code, brief, detail)
-        self.flushWarnings()  # Covered in test_deprecatedErrorPage.
         self._pageRenderingTest(page, code, brief, detail)
 
     def test_noResourceRendering(self) -> None:
@@ -123,11 +109,10 @@ class ErrorPageTests(TestCase):
         L{NoResource} sets the HTTP I{NOT FOUND} code.
         """
         NoResource = self.getDeprecatedModuleAttribute(
-            "twisted.web.resource", "NoResource", Version("Twisted", "NEXT", 0, 0)
+            "twisted.web.resource", "NoResource", Version("Twisted", 22, 10, 0)
         )
         detail = "long message"
         page = NoResource(detail)
-        self.flushWarnings()  # Covered in test_deprecatedNoResource.
         self._pageRenderingTest(page, NOT_FOUND, "No Such Resource", detail)
 
     def test_forbiddenResourceRendering(self) -> None:
@@ -137,11 +122,10 @@ class ErrorPageTests(TestCase):
         ForbiddenResource = self.getDeprecatedModuleAttribute(
             "twisted.web.resource",
             "ForbiddenResource",
-            Version("Twisted", "NEXT", 0, 0),
+            Version("Twisted", 22, 10, 0),
         )
         detail = "longer message"
         page = ForbiddenResource(detail)
-        self.flushWarnings()  # Covered in test_deprecatedForbiddenResource.
         self._pageRenderingTest(page, FORBIDDEN, "Forbidden Resource", detail)
 
 
