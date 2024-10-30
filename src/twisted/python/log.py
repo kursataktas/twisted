@@ -12,6 +12,7 @@ import time
 import warnings
 from abc import ABC, abstractmethod
 from datetime import datetime, timezone
+from functools import partial
 from typing import Any, BinaryIO, Dict, Optional, cast
 
 from zope.interface import Interface
@@ -80,10 +81,15 @@ def callWithContext(ctx, func, *args, **kw):
     return context.call({ILogContext: newCtx}, func, *args, **kw)
 
 
-def callWithLogger(logger, func, *args, **kw):
+def _getCallWithLogger(logger):
     """
-    Utility method which wraps a function in a try:/except:, logs a failure if
-    one occurs, and uses the system's logPrefix.
+    Return a callable that takes a function and arguments.
+
+    The function is called with the arguments, will be the given C{logger} as
+    its system logPrefix, and any errors raised by the function are logged.
+
+    Correctness invariance: the returned callable is only valid in the original
+    thread this was called in.
     """
     try:
         lp = logger.logPrefix()
@@ -92,12 +98,20 @@ def callWithLogger(logger, func, *args, **kw):
     except BaseException:
         lp = "(buggy logPrefix method)"
         err(system=lp)
-    try:
-        return callWithContext({"system": lp}, func, *args, **kw)
-    except KeyboardInterrupt:
-        raise
-    except BaseException:
-        err(system=lp)
+    newCtx = context.get(ILogContext).copy()
+    newCtx.update({"system": lp})
+    # This is thread-local. Insofar as the reactor is tied to a specific
+    # thread, this is fine!
+    currentContext = context.theContextTracker.currentContext()
+    return partial(currentContext.callWithContext, {ILogContext: newCtx})
+
+
+def callWithLogger(logger, func, *args, **kw):
+    """
+    Utility method which wraps a function in a try:/except:, logs a failure if
+    one occurs, and uses the system's logPrefix.
+    """
+    return _getCallWithLogger(logger)(func, *args, **kw)
 
 
 def err(_stuff=None, _why=None, **kw):

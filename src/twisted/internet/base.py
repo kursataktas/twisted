@@ -28,6 +28,7 @@ from typing import (
     Union,
     cast,
 )
+from weakref import WeakKeyDictionary
 
 from zope.interface import classImplements, implementer
 
@@ -59,7 +60,7 @@ from twisted.internet.protocol import ClientFactory
 from twisted.logger import Logger
 from twisted.python import reflect
 from twisted.python.failure import Failure
-from twisted.python.log import callWithLogger as _callWithLogger
+from twisted.python.log import callWithLogger as _callWithLogger, _getCallWithLogger
 from twisted.python.runtime import platform, seconds as runtimeSeconds
 from ._signals import SignalHandling, _WithoutSignalHandling, _WithSignalHandling
 
@@ -636,6 +637,9 @@ class ReactorBase(PluggableResolverMixin):
         self._internalReaders: Set[Any] = set()
         self.waker: Any = None
 
+        # Map _LogOwner to a callable for running with that as the log context:
+        self._logOwnerRunners = {}
+
         # Arrange for the running attribute to change to True at the right time
         # and let a subclass possibly do other things at that time (eg install
         # signal handlers).
@@ -646,6 +650,15 @@ class ReactorBase(PluggableResolverMixin):
         if platform.supportsThreads():
             self._initThreads()
         self.installWaker()
+
+    def _runWithLogContext(self, selectable, func, *args, **kwargs):
+        try:
+            # Fast path, presumes selectables stay alive for a while:
+            runner = self._logOwnerRunners[selectable]
+        except KeyError:
+            runner = self._logOwnerRunners[selectable] = _getCallWithLogger(selectable)
+
+        return runner(func, *args, **kwargs)
 
     # Signal handling pieces
     _installSignalHandlers: bool = False
