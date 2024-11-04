@@ -5,6 +5,7 @@ Twisted
 |rtd|_
 |pypi|_
 |ci|_
+|gurubase|_
 
 For information on changes in this release, see the `NEWS <NEWS.rst>`_ file.
 
