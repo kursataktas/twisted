@@ -140,3 +140,6 @@ Again, see the included `LICENSE <LICENSE>`_ file for specific legal details.
 .. |sftpplus| image:: https://github.com/user-attachments/assets/5f585316-c7e8-4ef1-8fbb-923f0756ceed
     :alt: SFTPPlus
 .. _sftpplus: https://www.sftpplus.com/
+
+.. |gurubase| image:: https://img.shields.io/badge/Gurubase-Ask%20Twisted%20Guru-006BFF
+.. _gurubase: https://gurubase.io/g/twisted
